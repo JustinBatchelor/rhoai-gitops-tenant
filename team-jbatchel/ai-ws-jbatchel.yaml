@@ -1,0 +1,58 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: "ai-ws-jbatchel"
+  namespace: "tenant-gitops"
+  labels:
+    app.kubernetes.io/part-of: ai-workspace
+    ai-workspace/username: "jbatchel"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: "team-jbatchel"
+  source:
+    repoURL: "https://github.com/JustinBatchelor/rhoai-helm-charts.git"
+    path: "devspace"
+    targetRevision: "main"
+    helm:
+      values: |
+        username: "jbatchel"
+        gitRepo: "https://github.com/JustinBatchelor/rhoai-playbooks.git"
+        aiModel:
+          name: "qwen3-coder-30b-a3b"
+        devspacesNamespace: "jbatchel-devspaces"
+        modelServing:
+          enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: "jbatchel-ai-ws"
+  ignoreDifferences:
+  - group: workspace.devfile.io
+    kind: DevWorkspace
+    managedFieldsManagers:
+    - devworkspace-controller-manager
+    jsonPointers:
+    - /metadata/annotations
+    - /metadata/finalizers
+    - /metadata/labels/controller.devfile.io~1creator
+    - /spec/contributions
+    - /spec/started
+    - /spec/template/attributes/controller.devfile.io~1devworkspace-config
+    - /spec/template/attributes/controller.devfile.io~1scc
+    - /status
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 5
+    syncOptions:
+    - CreateNamespace=true
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+    - RespectIgnoreDifferences=true
+    - ServerSideApply=true
